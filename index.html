@@ -120,6 +120,24 @@
   }
   #nope.show { opacity: 1; transform: translate(-50%, 0); }
 
+  .credit {
+    margin: 0;
+    padding: 0 16px max(12px, env(safe-area-inset-bottom));
+    text-align: center;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .credit a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.25em;
+    text-decoration-color: var(--line);
+  }
+  .credit a:hover,
+  .credit a:focus-visible { color: var(--accent); text-decoration-color: var(--accent); }
+
   .timer { display: flex; align-items: center; gap: 4px; }
   #pomo {
     display: inline-flex;
@@ -176,6 +194,7 @@
     </div>
     <span class="tagline">No backspace. Keep going.</span>
   </footer>
+  <p class="credit">Created by <a href="https://penelopesaintgeorge.com/" rel="author">Penelope Saint-George</a></p>
 
   <div id="nope" role="status" aria-live="polite"></div>
 
