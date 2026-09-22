@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>First Draft of Anything</title>
+<meta name="description" content="A writing app with no backspace. Keep going. Fix it later.">
+<meta property="og:title" content="First Draft of Anything">
+<meta property="og:description" content="A writing app with no backspace. Keep going. Fix it later.">
+<meta property="og:url" content="https://firstdraftofanything.app/">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#f7f4ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a1917" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f4ee;
+    --ink: #22201c;
+    --muted: #8a857b;
+    --line: #e2ddd2;
+    --accent: #b8452e;
+    --button-bg: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1917;
+      --ink: #e9e5dc;
+      --muted: #8d887e;
+      --line: #34322e;
+      --accent: #e0765f;
+      --button-bg: #24231f;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Newsreader", Georgia, serif;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header, footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px max(16px, env(safe-area-inset-left)) 14px max(16px, env(safe-area-inset-right));
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  header h1 {
+    margin: 0;
+    font-family: "Newsreader", Georgia, serif;
+    font-weight: 500;
+    font-size: 17px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  button {
+    font: inherit;
+    color: var(--ink);
+    background: var(--button-bg);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 12px;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    padding: 0 16px;
+    min-height: 0;
+  }
+  #page {
+    width: 100%;
+    max-width: 680px;
+    height: 100%;
+    resize: none;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: clamp(19px, 2.2vw, 22px);
+    line-height: 1.6;
+    padding: 6vh 0 30vh;
+    caret-color: var(--accent);
+  }
+  #page::placeholder { color: var(--muted); font-style: italic; }
+
+  #nope {
+    position: fixed;
+    left: 50%;
+    bottom: 64px;
+    transform: translate(-50%, 8px);
+    background: var(--ink);
+    color: var(--bg);
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    white-space: nowrap;
+  }
+  #nope.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (max-width: 520px) {
+    header h1 { font-size: 15px; }
+    .actions { flex-wrap: nowrap; gap: 6px; }
+    button { padding: 5px 10px; font-size: 12px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #nope { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>First Draft of Anything</h1>
+    <div class="actions">
+      <button id="copy" type="button">Copy</button>
+      <button id="download" type="button">Download</button>
+      <button id="fresh" type="button">New draft</button>
+    </div>
+  </header>
+
+  <main>
+    <textarea id="page" aria-label="Your draft" placeholder="Start typing. There's no backspace."
+      spellcheck="false" autocorrect="off" autocomplete="off" autofocus></textarea>
+  </main>
+
+  <footer>
+    <span id="count">0 words</span>
+    <span>No backspace. Keep going.</span>
+  </footer>
+
+  <div id="nope" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  const page = document.getElementById('page');
+  const count = document.getElementById('count');
+  const nope = document.getElementById('nope');
+  const KEY = 'firstdraft:text';
+
+  const load = () => { try { return localStorage.getItem(KEY) || ''; } catch { return ''; } };
+  const save = () => { try { localStorage.setItem(KEY, page.value); } catch {} };
+
+  // Everything already typed. The textarea may only ever grow from the end of this.
+  let committed = load();
+  page.value = committed;
+
+  const lines = [
+    'No going back.',
+    'Keep going.',
+    'Fix it in the second draft.',
+    'Forward only.',
+    'That stays.',
+  ];
+  let nopeTimer;
+  const scold = () => {
+    nope.textContent = lines[Math.floor(Math.random() * lines.length)];
+    nope.classList.add('show');
+    clearTimeout(nopeTimer);
+    nopeTimer = setTimeout(() => nope.classList.remove('show'), 1100);
+  };
+
+  const toEnd = () => {
+    const n = page.value.length;
+    if (page.selectionStart !== n || page.selectionEnd !== n) page.setSelectionRange(n, n);
+  };
+
+  const updateCount = () => {
+    const words = page.value.trim().split(/\s+/).filter(Boolean).length;
+    count.textContent = words === 1 ? '1 word' : `${words} words`;
+  };
+
+  // Block deletions, undo and anything that would rewrite existing text.
+  page.addEventListener('beforeinput', (e) => {
+    const t = e.inputType;
+    if (t.startsWith('delete') || t.startsWith('history') ||
+        t === 'insertReplacementText' || t === 'insertFromDrop') {
+      e.preventDefault();
+      scold();
+      return;
+    }
+    toEnd();
+  });
+
+  // Belt and braces: if anything slipped through, restore what was there.
+  page.addEventListener('input', () => {
+    if (!page.value.startsWith(committed)) {
+      page.value = committed;
+      toEnd();
+      scold();
+      return;
+    }
+    committed = page.value;
+    save();
+    updateCount();
+    page.scrollTop = page.scrollHeight;
+  });
+
+  page.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); scold(); }
+  });
+  page.addEventListener('cut', (e) => { e.preventDefault(); scold(); });
+  page.addEventListener('drop', (e) => e.preventDefault());
+
+  // The caret lives at the end.
+  ['focus', 'click', 'select', 'keyup', 'compositionstart'].forEach((ev) =>
+    page.addEventListener(ev, toEnd));
+  document.addEventListener('selectionchange', () => {
+    if (document.activeElement === page && page.selectionStart === page.selectionEnd) toEnd();
+  });
+
+  document.getElementById('copy').addEventListener('click', async (e) => {
+    try {
+      await navigator.clipboard.writeText(page.value);
+      e.target.textContent = 'Copied';
+    } catch {
+      e.target.textContent = 'Copy failed';
+    }
+    setTimeout(() => (e.target.textContent = 'Copy'), 1400);
+    page.focus();
+  });
+
+  document.getElementById('download').addEventListener('click', () => {
+    const blob = new Blob([page.value], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `first-draft-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    page.focus();
+  });
+
+  document.getElementById('fresh').addEventListener('click', () => {
+    if (page.value && !confirm('Start a new draft? This one will be gone, so copy or download it first.')) return;
+    committed = '';
+    page.value = '';
+    save();
+    updateCount();
+    page.focus();
+  });
+
+  updateCount();
+  page.focus();
+  toEnd();
+})();
+</script>
+</body>
+</html>
