@@ -131,14 +131,15 @@
   }
   #nope.show { opacity: 1; transform: translate(-50%, 0); }
 
-  .credit {
-    margin: 0;
-    padding: 0 16px max(12px, env(safe-area-inset-bottom));
-    text-align: center;
-    font-family: system-ui, -apple-system, sans-serif;
-    font-size: 12px;
-    color: var(--muted);
+  footer { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+  footer .end {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    text-align: right;
   }
+  .credit { font-size: 12px; }
   .credit a {
     color: inherit;
     text-decoration: underline;
@@ -175,7 +176,9 @@
     .quote figcaption { font-size: 12px; }
     .actions { flex-wrap: nowrap; gap: 6px; }
     button { padding: 5px 10px; font-size: 12px; }
+    footer { flex-wrap: wrap; row-gap: 8px; }
     footer .tagline { display: none; }
+    footer .end { flex-basis: 100%; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -208,9 +211,11 @@
       <button id="pomo" type="button" aria-label="Start 25-minute focus timer"><span class="mode">Focus</span> <span id="pomo-time">25:00</span></button>
       <button id="pomo-reset" type="button" aria-label="Reset timer" title="Reset" hidden>↺</button>
     </div>
-    <span class="tagline">No backspace. Keep going.</span>
+    <div class="end">
+      <span class="tagline">No backspace. Keep going.</span>
+      <span class="credit">Created by <a href="https://penelopesaintgeorge.com/" rel="author">Penelope Saint-George</a></span>
+    </div>
   </footer>
-  <p class="credit">Created by <a href="https://penelopesaintgeorge.com/" rel="author">Penelope Saint-George</a></p>
 
   <div id="nope" role="status" aria-live="polite"></div>
 
