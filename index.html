@@ -120,10 +120,32 @@
   }
   #nope.show { opacity: 1; transform: translate(-50%, 0); }
 
+  .timer { display: flex; align-items: center; gap: 4px; }
+  #pomo {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  #pomo .mode { color: var(--muted); }
+  #pomo.running { border-color: var(--accent); }
+  #pomo.running .mode { color: var(--accent); }
+  #pomo-reset {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    padding: 4px 6px;
+    font-size: 15px;
+    line-height: 1;
+  }
+  #pomo-reset:hover { color: var(--ink); }
+  #pomo-reset[hidden] { display: none; }
+
   @media (max-width: 520px) {
     header h1 { font-size: 15px; }
     .actions { flex-wrap: nowrap; gap: 6px; }
     button { padding: 5px 10px; font-size: 12px; }
+    footer .tagline { display: none; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -148,7 +170,11 @@
 
   <footer>
     <span id="count">0 words</span>
-    <span>No backspace. Keep going.</span>
+    <div class="timer">
+      <button id="pomo" type="button" aria-label="Start 25-minute focus timer"><span class="mode">Focus</span> <span id="pomo-time">25:00</span></button>
+      <button id="pomo-reset" type="button" aria-label="Reset timer" title="Reset" hidden>↺</button>
+    </div>
+    <span class="tagline">No backspace. Keep going.</span>
   </footer>
 
   <div id="nope" role="status" aria-live="polite"></div>
@@ -175,12 +201,13 @@
     'That stays.',
   ];
   let nopeTimer;
-  const scold = () => {
-    nope.textContent = lines[Math.floor(Math.random() * lines.length)];
+  const toast = (msg, ms = 1100) => {
+    nope.textContent = msg;
     nope.classList.add('show');
     clearTimeout(nopeTimer);
-    nopeTimer = setTimeout(() => nope.classList.remove('show'), 1100);
+    nopeTimer = setTimeout(() => nope.classList.remove('show'), ms);
   };
+  const scold = () => toast(lines[Math.floor(Math.random() * lines.length)]);
 
   const toEnd = () => {
     const n = page.value.length;
@@ -261,6 +288,94 @@
     page.focus();
   });
 
+  // Pomodoro: 25 minutes of focus, then a 5-minute break. Click to start or pause.
+  const pomo = document.getElementById('pomo');
+  const pomoMode = pomo.querySelector('.mode');
+  const pomoTime = document.getElementById('pomo-time');
+  const pomoReset = document.getElementById('pomo-reset');
+  const MODES = { focus: { label: 'Focus', mins: 25 }, rest: { label: 'Break', mins: 5 } };
+  let mode = 'focus';
+  let remaining = MODES.focus.mins * 60 * 1000;
+  let endsAt = null;
+  let tick = null;
+
+  const fmt = (ms) => {
+    const s = Math.ceil(ms / 1000);
+    return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  };
+
+  const renderPomo = () => {
+    const running = endsAt !== null;
+    pomoMode.textContent = MODES[mode].label;
+    pomoTime.textContent = fmt(remaining);
+    pomo.classList.toggle('running', running);
+    pomo.setAttribute('aria-label', running ? 'Pause timer' : `Start ${MODES[mode].label.toLowerCase()} timer`);
+    pomoReset.hidden = !running && remaining === MODES[mode].mins * 60 * 1000;
+    document.title = running ? `${fmt(remaining)} · First Draft of Anything` : 'First Draft of Anything';
+  };
+
+  const chime = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [660, 880].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const t = ctx.currentTime + i * 0.25;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.2, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.65);
+      });
+    } catch {}
+  };
+
+  const stop = () => { clearInterval(tick); tick = null; endsAt = null; };
+
+  const setMode = (m) => {
+    stop();
+    mode = m;
+    remaining = MODES[m].mins * 60 * 1000;
+    renderPomo();
+  };
+
+  const step = () => {
+    remaining = Math.max(0, endsAt - Date.now());
+    if (remaining === 0) {
+      chime();
+      if (mode === 'focus') {
+        toast('Time’s up. Take five.', 3000);
+        setMode('rest');
+      } else {
+        toast('Break over. Back to it.', 3000);
+        setMode('focus');
+      }
+      return;
+    }
+    renderPomo();
+  };
+
+  pomo.addEventListener('click', () => {
+    if (endsAt !== null) {
+      remaining = Math.max(0, endsAt - Date.now());
+      stop();
+      renderPomo();
+    } else {
+      endsAt = Date.now() + remaining;
+      tick = setInterval(step, 250);
+      renderPomo();
+    }
+    page.focus();
+  });
+
+  pomoReset.addEventListener('click', () => {
+    setMode('focus');
+    page.focus();
+  });
+
+  renderPomo();
   updateCount();
   page.focus();
   toEnd();
